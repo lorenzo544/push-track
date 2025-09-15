@@ -1,0 +1,139 @@
+import SwiftUI
+
+struct CalendarView: View {
+    let weekDays = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+    let dates    = ["14","15","16","17","18","19","20"] // example
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#121212").ignoresSafeArea()
+            VStack(alignment: .leading, spacing: 16) {
+                
+                // Top bar with month/year and profile
+                HStack {
+                    Button {
+                        // Action to change month/year
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text("September 2025")
+                                .font(.title2.bold())
+                                .foregroundColor(Color(hex: "#E5E5EA"))
+                            Image(systemName: "chevron.down")
+                                .foregroundColor(Color(hex: "#E5E5EA"))
+                                .font(.title3)
+                        }
+                    }
+                    Spacer()
+                    Button {
+                        // profile action
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: "#FF9500"))
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                Image(systemName: "person.fill")
+                                    .foregroundColor(Color(hex: "#121212"))
+                            )
+                    }
+                }
+                .padding(.horizontal)
+
+                // Week bar with horizontal scroll
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 20) {
+                        ForEach(Array(weekDays.enumerated()), id: \.offset) { i, day in
+                            VStack(spacing: 6) {
+                                Text(day)
+                                    .font(.footnote)
+                                    .foregroundColor(Color(hex: "#E5E5EA"))
+                                Text(dates[i])
+                                    .font(.headline.bold())
+                                    .foregroundColor(
+                                        i == 1 ? Color(hex: "#121212")
+                                               : Color(hex: "#E5E5EA")
+                                    )
+                                    .frame(width: 32, height: 32)
+                                    .background(
+                                        Circle().fill(
+                                            i == 1 ? Color(hex: "#FF9500")
+                                                   : Color(hex: "#E5E5EA").opacity(0.15)
+                                        )
+                                    )
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+
+                // Daily Photo Button + weight (Instagram Stories format 9:16)
+                VStack(spacing: 12) {
+                    Button {
+                        // Action to add daily photo
+                    } label: {
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.gray.opacity(0.3))
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(9/16, contentMode: .fit)
+                            VStack {
+                                Image(systemName: "camera.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.gray)
+                                Text("Add Daily Photo")
+                                    .foregroundColor(.gray)
+                                    .font(.headline.bold())
+                            }
+                        }
+                    }
+
+                    HStack {
+                        Text("Mood of the day:")
+                            .foregroundColor(Color(hex: "#E5E5EA"))
+                        Spacer()
+                        Text("Really good")
+                            .foregroundColor(Color(hex: "#FF9500"))
+                            .bold()
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.top, 16)
+
+                Spacer()
+            }
+            .padding(.top)
+        }
+    }
+}
+
+// MARK: - Color Helper per SwiftUI
+extension Color {
+    init(hex: String) {
+        let scanner = Scanner(string: hex)
+        _ = scanner.scanString("#")
+        var rgb: UInt64 = 0
+        scanner.scanHexInt64(&rgb)
+        let r = Double((rgb >> 16) & 0xFF) / 255.0
+        let g = Double((rgb >> 8) & 0xFF) / 255.0
+        let b = Double(rgb & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
+    }
+}
+
+// MARK: - Color Helper per UIColor
+extension UIColor {
+    convenience init(hex: String) {
+        let scanner = Scanner(string: hex)
+        _ = scanner.scanString("#")
+        var rgb: UInt64 = 0
+        scanner.scanHexInt64(&rgb)
+        let r = CGFloat((rgb >> 16) & 0xFF) / 255
+        let g = CGFloat((rgb >> 8) & 0xFF) / 255
+        let b = CGFloat(rgb & 0xFF) / 255
+        self.init(red: r, green: g, blue: b, alpha: 1)
+    }
+}
+
+#Preview {
+    CalendarView()
+}
