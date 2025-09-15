@@ -1,0 +1,82 @@
+import SwiftUI
+import UIKit
+
+// MARK: - ContentView con TabBar personalizzata
+struct ContentView: View {
+    init() {
+        // Configurazione aspetto della Tab Bar
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        
+        // Sfondo della tab bar: colore scuro #121212
+        appearance.backgroundColor = UIColor(hex: "#121212")
+        
+        // Colore icone e testo NON selezionati (grigio medio)
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor(hex: "#B0B0B5")
+        appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor(hex: "#B0B0B5")]
+        
+        // Colore icone e testo SELEZIONATI (arancione brillante)
+        appearance.stackedLayoutAppearance.selected.iconColor = UIColor(hex: "#FF9500")
+        appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor(hex: "#FF9500")]
+        
+        // Applicazione dell'aspetto a tutte le tab bar
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
+    
+    var body: some View {
+        TabView {
+            // Primo tab - Notes (icona manubrio)
+            NotesView()
+                .tabItem {
+                    Image(systemName: "dumbbell")   // icona manubrio
+                    Text("Notes")                   // etichetta sotto icona
+                }
+            
+            // Secondo tab - Workout con bottone play stilizzato
+        /*    WorkoutView()
+                .tabItem {
+                    VStack(spacing: 4) {
+                        ZStack {
+                            Circle()
+                                .fill(Color("#FF9500"))  // cerchio arancione come sfondo
+                                .frame(width: 50, height: 50)
+                            Image(systemName: "play.fill")
+                                .foregroundColor(Color("#121212")) // icona play scura
+                                .font(.title2.bold())
+                        }
+                        Text("Workout")
+                            .font(.caption)
+                    }
+                } */
+            
+            // Terzo tab - Calendar (icona calendario)
+            CalendarView()
+                .tabItem {
+                    Image(systemName: "calendar")
+                    Text("Calendar")
+                }
+        }
+    }
+}
+
+#Preview {
+    ContentView()
+}
+
+// MARK: - Estensione per creare UIColor da codice esadecimale
+extension UIColor {
+    convenience init(hexString: String) {
+        let scanner = Scanner(string: hexString)
+        _ = scanner.scanString("#")
+        var rgb: UInt64 = 0
+        scanner.scanHexInt64(&rgb)
+        
+        let r = CGFloat((rgb >> 16) & 0xFF) / 255
+        let g = CGFloat((rgb >> 8) & 0xFF) / 255
+        let b = CGFloat(rgb & 0xFF) / 255
+        
+        self.init(red: r, green: g, blue: b, alpha: 1)
+    }
+}
+
