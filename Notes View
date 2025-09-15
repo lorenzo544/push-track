@@ -1,0 +1,468 @@
+import SwiftUI
+import Charts
+
+// MARK: - Modello dati
+struct WorkoutEntry: Identifiable {
+    let id = UUID()
+    let date: String
+    let weight: Double
+}
+
+// MARK: - NotesView principale
+struct NotesView: View {
+    @State private var hoursTotalSeconds = 0
+    @State private var showSchedule = false
+    @State private var showDiet = false
+    @State private var showReminders = false
+    @State private var isTimerRunning = false
+    @State private var feelingText: String = ""
+    @State private var showWorkout = false
+    
+    let workoutData: [WorkoutEntry] = [
+        WorkoutEntry(date: "12/09", weight: 72.5),
+        WorkoutEntry(date: "16/09", weight: 75.0),
+        WorkoutEntry(date: "19/09", weight: 72.5)
+    ]
+    
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    
+    private let tableHeaderColor = Color(hex: "#FF9500")
+    private let accentTextColor = Color(red: 200/255, green: 200/255, blue: 210/255)
+    
+    func hoursTimeFormatted(_ totalSeconds: Int) -> String {
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+    
+    var body: some View {
+        ZStack {
+            Color(hex: "#121212").ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // TopBar fissa come CalendarView
+                TopBarView(
+                    hoursTotalSeconds: hoursTotalSeconds,
+                    hoursTimeFormatted: hoursTimeFormatted,
+                    tableHeaderColor: tableHeaderColor
+                )
+                
+                // ScrollView con contenuto sotto la TopBar
+                ScrollView {
+                    VStack(spacing: 16) {
+                        TodaysWorkoutButtonView(
+                            showWorkout: $showWorkout,
+                            tableHeaderColor: tableHeaderColor,
+                            accentTextColor: accentTextColor
+                        )
+
+                        WeightChartView(
+                            workoutData: workoutData,
+                            tableHeaderColor: tableHeaderColor,
+                            accentTextColor: accentTextColor
+                        )
+                        
+                        ScheduleButtonView(
+                            showSchedule: $showSchedule,
+                            tableHeaderColor: tableHeaderColor
+                        )
+                        
+                        DietRemindersView(
+                            showDiet: $showDiet,
+                            showReminders: $showReminders,
+                            tableHeaderColor: tableHeaderColor
+                        )
+                        // Box "How do you feel today?"
+                        VStack {
+                            ZStack(alignment: .topLeading) {
+                                if feelingText.isEmpty {
+                                    Text("How do you feel today? ...")
+                                        .foregroundColor(tableHeaderColor)
+                                        .font(.headline.bold())                               .padding(.horizontal, 16)
+                                    .padding(.top, 12)                       }
+                                TextField("", text: $feelingText)
+                                    .foregroundColor(.white)                     // testo digitato bianco
+                                    .font(.headline.bold())                      // per uniformità
+                                    .padding(16)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            }
+                            .frame(width: 380, height: 120)                        // stessa larghezza dei bottoni
+                            .background(.ultraThinMaterial)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+
+                        Spacer().frame(height: 120)
+                    }
+                    .padding(.top, 8) // piccolo margine sotto TopBar
+                }
+            }
+            
+            // Bottone Play/Pause fisso in basso
+            PlayPauseButtonView(
+                isTimerRunning: $isTimerRunning,
+                hoursTotalSeconds: $hoursTotalSeconds,
+                tableHeaderColor: tableHeaderColor
+            )
+        }
+        .onReceive(timer) { _ in
+            if isTimerRunning {
+                hoursTotalSeconds += 1
+            }
+        }
+    }
+}
+
+// MARK: - TopBarView identica a CalendarView
+struct TopBarView: View {
+    let hoursTotalSeconds: Int
+    let hoursTimeFormatted: (Int) -> String
+    let tableHeaderColor: Color
+    
+    var body: some View {
+        HStack {
+            HStack(spacing: 4) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .foregroundColor(tableHeaderColor)
+                    .font(.title3)
+                Text(hoursTimeFormatted(hoursTotalSeconds))
+                    .font(.title2.bold())
+                    .foregroundColor(Color(hex: "#E5E5EA"))
+            }
+            Spacer()
+            Button(action: {}) {
+                Circle()
+                    .fill(Color(hex: "#FF9500"))
+                    .frame(width: 36, height: 36)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .foregroundColor(Color(hex: "#121212"))
+                    )
+            }
+        }
+        .padding(.horizontal)
+        .frame(height: 60) // altezza fissa
+        .background(Color(hex: "#121212"))
+    }
+}
+
+// MARK: - TodaysWorkoutButtonView
+struct TodaysWorkoutButtonView: View {
+    @Binding var showWorkout: Bool
+    let tableHeaderColor: Color
+    let accentTextColor: Color
+    var todaysWorkoutTitle: String {
+        let date = Date()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX") // o "it_IT" per l'italiano
+        formatter.dateFormat = "MMMM d, EEEE" // es: September 15, Monday
+        return "\(formatter.string(from: date))'s Workout"
+    }
+
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // Bottone Today's Workout
+            Button(action: { withAnimation { showWorkout.toggle() } }) {
+                HStack {
+                    Text(todaysWorkoutTitle)
+                        .foregroundColor(tableHeaderColor)
+                        .font(.headline.bold())
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(showWorkout ? 180 : 0))
+                        .foregroundColor(tableHeaderColor)
+                    Spacer()
+                 /*   Button(action: {}) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(tableHeaderColor)
+                    } */
+                }
+                .padding()
+                .frame(width: 380)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            
+            // Tabella degli esercizi (visibile solo se showWorkout == true)
+            if showWorkout {
+                ExercisesTableView(accentTextColor: accentTextColor)
+            }
+        }
+    }
+}
+// MARK: - ExercisesTableView
+struct ExercisesTableView: View {
+    let accentTextColor: Color
+    
+    let exercises = ["Chest Press","Pectoral Machine","Dips","Shoulder Press","Lateral Raises","Tapis Roulant"]
+    let lastWeights = ["80","65","30","45","10","-"]
+    let rests = ["90s","60s","120s","90s","60s","-"]
+    let intensities = ["High","Stripping","Medium","High","Dropset","High"]
+    let notes = ["Next time 82.5kg","55kg","-","-","7.5kg","10m"]
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            VStack(spacing: 12) {
+                // Header
+                HStack(spacing: 0) {
+                    Text("Exercise").foregroundColor(accentTextColor).frame(width: 130, alignment: .leading)
+                    Text("Last Weight").foregroundColor(accentTextColor).frame(width: 110, alignment: .leading)
+                    Text("Rest").foregroundColor(accentTextColor).frame(width: 90, alignment: .leading)
+                    Text("Intensity").foregroundColor(accentTextColor).frame(width: 90, alignment: .leading)
+                    Text("Notes").foregroundColor(accentTextColor).frame(width: 150, alignment: .leading)
+                }
+                .font(.callout.bold())
+                .padding(.horizontal, 16)
+                
+                // Rows
+                ForEach(exercises.indices, id: \.self) { i in
+                    HStack(spacing: 0) {
+                        Text(exercises[i]).foregroundColor(.white).frame(width: 130, alignment: .leading)
+                        Text(lastWeights[i]).foregroundColor(.white).frame(width: 110, alignment: .leading)
+                        Text(rests[i]).foregroundColor(.white).frame(width: 90, alignment: .leading)
+                        Text(intensities[i]).foregroundColor(.white).frame(width: 90, alignment: .leading)
+                        Text(notes[i]).foregroundColor(.white).frame(width: 150, alignment: .leading)
+                    }
+                    .padding(.horizontal, 16)
+                }
+                
+                /* Add Exercise
+                HStack {
+                    Button(action: {}) {
+                        Text("Add Exercise...")
+                            .foregroundColor(accentTextColor)
+                            .font(.callout.bold())
+                            .frame(height: 30, alignment: .leading)
+                    }
+                    .padding(.horizontal, 16)
+                    Spacer()
+                } */
+            }
+            .padding(.vertical, 4)
+            .frame(minWidth: 580) // permette di avere spazio sufficiente per tutte le colonne
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+        }
+    }
+}
+
+// MARK: - WeightChartView
+struct WeightChartView: View {
+    let workoutData: [WorkoutEntry]
+    let tableHeaderColor: Color
+    let accentTextColor: Color
+    
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Chart {
+                ForEach(workoutData) { entry in
+                    LineMark(
+                        x: .value("Date", entry.date),
+                        y: .value("Weight", entry.weight)
+                    )
+                    .foregroundStyle(tableHeaderColor)
+                    
+                    PointMark(
+                        x: .value("Date", entry.date),
+                        y: .value("Weight", entry.weight)
+                    )
+                    .foregroundStyle(.white)
+                }
+            }
+            .chartYScale(domain: 60...80)
+            .chartXAxis {
+                let dates = workoutData.map { $0.date } + ["hourglass"]
+                AxisMarks(values: dates) { value in
+                    AxisGridLine().foregroundStyle(.white.opacity(0.4))
+                    AxisTick().foregroundStyle(.white)
+                    AxisValueLabel {
+                        if let string = value.as(String.self) {
+                            if string == "hourglass" {
+                                Image(systemName: "hourglass").foregroundColor(.white)
+                            } else {
+                                Text(string).foregroundColor(.white)
+                            }
+                        }
+                    }
+                }
+            }
+            .chartYAxis {
+                AxisMarks(position: .leading) { value in
+                    AxisGridLine().foregroundStyle(.white.opacity(0.4))
+                    AxisTick().foregroundStyle(.white)
+                    AxisValueLabel {
+                        if let double = value.as(Double.self) {
+                            Text("\(Int(double))").foregroundColor(.white)
+                        }
+                    }
+                }
+            }
+            .frame(width: 380, height: 260)
+            
+            // Bottone Personal Weight Progress
+            Button(action: {}) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.down").foregroundColor(.white)
+                    Text("Personal Weight Progress")
+                        .font(.subheadline.bold())
+                        .foregroundColor(accentTextColor)
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.4))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding([.top, .trailing], -4)
+            }
+        }
+        .padding(.top, 8)
+    }
+}
+
+// MARK: - ScheduleButtonView
+struct ScheduleButtonView: View {
+    @Binding var showSchedule: Bool
+    let tableHeaderColor: Color
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Button(action: { withAnimation { showSchedule.toggle() } }) {
+                HStack {
+                    Text("Schedule 1")
+                        .foregroundColor(tableHeaderColor)
+                        .font(.headline.bold())
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(showSchedule ? 180 : 0))
+                        .foregroundColor(tableHeaderColor)
+                    Spacer()
+                    Button(action: {}) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(tableHeaderColor)
+                    }
+                }
+                .padding()
+                .frame(width: 380)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+    }
+}
+
+// MARK: - DietRemindersView
+struct DietRemindersView: View {
+    @Binding var showDiet: Bool
+    @Binding var showReminders: Bool
+    let tableHeaderColor: Color
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(action: { withAnimation { showDiet.toggle() } }) {
+                HStack {
+                    Text("Diet")
+                        .foregroundColor(tableHeaderColor)
+                        .font(.headline.bold())
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(showDiet ? 180 : 0))
+                        .foregroundColor(tableHeaderColor)
+                    Spacer()
+                    Button(action: {}) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(tableHeaderColor)
+                    }
+                }
+                .padding()
+                .frame(width: 184)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+            
+            Button(action: { withAnimation { showReminders.toggle() } }) {
+                HStack {
+                    Text("Reminders")
+                        .foregroundColor(tableHeaderColor)
+                        .font(.headline.bold())
+                    Image(systemName: "chevron.down")
+                        .rotationEffect(.degrees(showReminders ? 180 : 0))
+                        .foregroundColor(tableHeaderColor)
+                    Spacer()
+                    Button(action: {}) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(tableHeaderColor)
+                    }
+                }
+                .padding()
+                .frame(width: 184)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+    }
+}
+
+// MARK: - PlayPauseButtonView
+struct PlayPauseButtonView: View {
+    @Binding var isTimerRunning: Bool
+    @Binding var hoursTotalSeconds: Int
+    let tableHeaderColor: Color
+    
+    @State private var showControls: Bool = false
+    
+    private let buttonSize: CGFloat = 60 // dimensione circolare più piccola
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            
+            HStack(spacing: 20) {
+                // Bottone Pausa a sinistra
+                if showControls {
+                    Button(action: {
+                        isTimerRunning = false
+                    }) {
+                        Image(systemName: "pause.fill")
+                            .foregroundColor(.black)
+                            .font(.title2)
+                            .frame(width: buttonSize, height: buttonSize)
+                            .background(tableHeaderColor)
+                            .clipShape(Circle())
+                    }
+                }
+                
+                // Bottone Stop a destra
+                if showControls {
+                    Button(action: {
+                        hoursTotalSeconds = 0
+                        isTimerRunning = false
+                        showControls = false
+                    }) {
+                        Image(systemName: "stop.fill")
+                            .foregroundColor(.black)
+                            .font(.title2)
+                            .frame(width: buttonSize, height: buttonSize)
+                            .background(tableHeaderColor)
+                            .clipShape(Circle())
+                    }
+                }
+                
+                // Bottone Play iniziale (solo se showControls false)
+                if !showControls {
+                    Button(action: {
+                        isTimerRunning = true
+                        showControls = true
+                    }) {
+                        Image(systemName: "play.fill")
+                            .foregroundColor(.black)
+                            .font(.title2)
+                            .frame(width: buttonSize, height: buttonSize)
+                            .background(tableHeaderColor)
+                            .clipShape(Circle())
+                    }
+                }
+            }
+            .padding(.bottom, 40)
+        }
+    }
+}
+
+#Preview {
+    NotesView()
+}
